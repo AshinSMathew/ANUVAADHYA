@@ -1,0 +1,9 @@
+fastapi
+uvicorn
+python-multipart
+python-dotenv
+moviepy==1.0.3
+deep-translator
+sarvamai
+requests
+pydantic
