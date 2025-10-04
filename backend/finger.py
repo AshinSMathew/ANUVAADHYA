@@ -1,159 +1,223 @@
-# fingerprint_server_mem.py
 import os
-import io
-import uuid
-import tempfile
-import hashlib
-from typing import List, Dict, Any
-from fastapi import FastAPI, UploadFile, File, HTTPException
-from fastapi.responses import JSONResponse
-from moviepy.editor import VideoFileClip
-import numpy as np
+import cv2
 import librosa
+import numpy as np
+import hashlib
+import sqlite3
+import tempfile
+from fastapi import FastAPI, UploadFile, File, Form
+from fastapi.middleware.cors import CORSMiddleware
 from PIL import Image
 import imagehash
 
-# ---------- Config ----------
-SEGMENT_SECONDS = 5.0
-OVERLAP = 0.5
-AUDIO_SR = 22050
-# ----------------------------
+# ================= CONFIGURATION =================
+DB_PATH = "anti_piracy.db"
+UPLOAD_DIR = "uploads"
+os.makedirs(UPLOAD_DIR, exist_ok=True)
 
-app = FastAPI(title="Fingerprint Demo API (In-Memory)")
+# Similarity threshold: min fraction of hashes that must match to trigger a hit
+SIMILARITY_THRESHOLD = 0.15  
 
-# ---------- In-Memory Storage ----------
-videos: Dict[str, Dict[str, Any]] = {}   # video_id -> {filename, duration, segments: [...]}
-# each segment: {"index","start","end","audio_fp","visual_fp"}
+# ================= FASTAPI SETUP =================
+app = FastAPI(
+    title="Anti-Piracy Content Protection",
+    description="Detect pirated content using audio-visual fingerprinting",
+    version="1.0.0"
+)
 
-# ---------- Fingerprinting helpers ----------
-def audio_fingerprint_from_slice(y_slice: np.ndarray, sr: int = AUDIO_SR) -> str:
-    S = librosa.feature.melspectrogram(y=y_slice, sr=sr, n_fft=2048, hop_length=512, n_mels=64)
-    S_db = librosa.power_to_db(S, ref=np.max)
-    summary = np.round(np.mean(S_db, axis=1), 3)
-    h = hashlib.sha1(summary.tobytes()).hexdigest()
-    return h
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
-def visual_phash_from_frame(frame: np.ndarray) -> str:
-    img = Image.fromarray(frame.astype('uint8'), 'RGB')
-    ph = imagehash.phash(img)
-    return str(ph)
+# ================= DATABASE =================
+def create_tables():
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    c.execute('''CREATE TABLE IF NOT EXISTS videos (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        file_path TEXT,
+        title TEXT,
+        duration REAL
+    )''')
+    c.execute('''CREATE TABLE IF NOT EXISTS audio_hashes (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        video_id INTEGER,
+        hash TEXT,
+        time REAL,
+        FOREIGN KEY(video_id) REFERENCES videos(id)
+    )''')
+    c.execute('''CREATE TABLE IF NOT EXISTS visual_hashes (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        video_id INTEGER,
+        hash TEXT,
+        frame INTEGER,
+        FOREIGN KEY(video_id) REFERENCES videos(id)
+    )''')
+    conn.commit()
+    conn.close()
 
-def extract_audio_and_frames(video_path: str):
-    clip = VideoFileClip(video_path)
-    duration = clip.duration
-    temp_audio_path = video_path + ".wav"
-    clip.audio.write_audiofile(temp_audio_path, verbose=False, logger=None)
-    y, sr = librosa.load(temp_audio_path, sr=AUDIO_SR, mono=True)
-    os.remove(temp_audio_path)
-    return clip, duration, y, sr
+@app.on_event("startup")
+def startup_event():
+    create_tables()
 
-def compute_segment_fingerprints(video_path: str, segment_seconds=SEGMENT_SECONDS, overlap=OVERLAP):
-    clip, duration, y, sr = extract_audio_and_frames(video_path)
-    step = segment_seconds * (1 - overlap)
-    segments = []
-    seg_index = 0
-    t = 0.0
-    while t < max(0.0, duration - 0.001):
-        start = t
-        end = min(duration, t + segment_seconds)
-        a_start = int(start * sr)
-        a_end = int(end * sr)
-        y_slice = y[a_start:a_end]
-        if len(y_slice) < 2:
-            y_slice = np.pad(y_slice, (0, max(0, int(segment_seconds*sr)-len(y_slice))))
-        audio_fp = audio_fingerprint_from_slice(y_slice, sr=sr)
-        mid = start + (end - start) / 2.0
-        try:
-            frame = clip.get_frame(mid)
-            visual_fp = visual_phash_from_frame(frame)
-        except Exception:
-            visual_fp = None
-        segments.append({
-            "index": seg_index,
-            "start": float(start),
-            "end": float(end),
-            "audio_fp": audio_fp,
-            "visual_fp": visual_fp
-        })
-        seg_index += 1
-        t += step
-    clip.close()
-    return duration, segments
+# ================= HELPER FUNCTIONS =================
+def insert_video(file_path, title, duration):
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    c.execute("INSERT INTO videos (file_path, title, duration) VALUES (?, ?, ?)",
+              (file_path, title, duration))
+    vid = c.lastrowid
+    conn.commit()
+    conn.close()
+    return vid
 
-# ---------- API Endpoints ----------
-@app.post("/upload-reference")
-async def upload_reference(file: UploadFile = File(...)):
-    if not file.filename.lower().endswith(('.mp4', '.mkv', '.avi', '.mov', '.webm')):
-        raise HTTPException(status_code=400, detail="Unsupported file type")
+def insert_audio_hash(video_id, h, t):
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    c.execute("INSERT INTO audio_hashes (video_id, hash, time) VALUES (?, ?, ?)",
+              (video_id, str(h), t))
+    conn.commit()
+    conn.close()
 
-    tmp = tempfile.NamedTemporaryFile(delete=False, suffix=os.path.splitext(file.filename)[1])
-    content = await file.read()
-    tmp.write(content)
-    tmp.flush()
-    tmp.close()
-    video_path = tmp.name
+def insert_visual_hash(video_id, h, f):
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    c.execute("INSERT INTO visual_hashes (video_id, hash, frame) VALUES (?, ?, ?)",
+              (video_id, str(h), f))
+    conn.commit()
+    conn.close()
 
-    try:
-        vid_id = str(uuid.uuid4())
-        duration, segments = compute_segment_fingerprints(video_path)
-        videos[vid_id] = {
-            "filename": file.filename,
-            "duration": duration,
-            "segments": segments
-        }
-        return {
-            "video_id": vid_id,
-            "filename": file.filename,
-            "duration": duration,
-            "segments_count": len(segments)
-        }
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error processing video: {e}")
-    finally:
-        if os.path.exists(video_path):
-            os.unlink(video_path)
+# ================= AUDIO FINGERPRINT =================
+def audio_fingerprint(file_path):
+    """Robust audio fingerprint using chroma + spectral contrast features."""
+    y, sr = librosa.load(file_path, sr=22050)
+    hop = sr // 2  # half-second windows
+    duration = librosa.get_duration(y=y, sr=sr)
+    hashes = []
+    for i in range(0, len(y), hop):
+        seg = y[i:i+hop]
+        if len(seg) == 0 or np.mean(np.abs(seg)) < 0.01:
+            continue
+        chroma = librosa.feature.chroma_stft(y=seg, sr=sr)
+        spec = librosa.feature.spectral_contrast(y=seg, sr=sr)
+        feature_vec = np.concatenate([np.mean(chroma, axis=1), np.mean(spec, axis=1)])
+        h = hashlib.sha1(feature_vec.tobytes()).hexdigest()
+        hashes.append((h, i / sr))
+    return hashes, duration
 
-@app.post("/check-video")
-async def check_video(file: UploadFile = File(...)):
-    if not file.filename.lower().endswith(('.mp4', '.mkv', '.avi', '.mov', '.webm')):
-        raise HTTPException(status_code=400, detail="Unsupported file type")
+# ================= VISUAL FINGERPRINT =================
+def video_fingerprint(file_path, frame_skip=15):
+    """Perceptual hash (phash) of frames at interval frame_skip."""
+    cap = cv2.VideoCapture(file_path)
+    frame_idx = 0
+    hashes = []
+    while True:
+        ret, frame = cap.read()
+        if not ret:
+            break
+        if frame_idx % frame_skip == 0:
+            pil_frame = Image.fromarray(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
+            h = str(imagehash.phash(pil_frame))
+            hashes.append((h, frame_idx))
+        frame_idx += 1
+    cap.release()
+    return hashes
 
-    tmp = tempfile.NamedTemporaryFile(delete=False, suffix=os.path.splitext(file.filename)[1])
-    content = await file.read()
-    tmp.write(content)
-    tmp.flush()
-    tmp.close()
-    video_path = tmp.name
+# ================= QUERY FUNCTIONS =================
+def query_audio_hashes(query_hashes):
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    results = []
+    for h, t in query_hashes:
+        c.execute("SELECT video_id FROM audio_hashes WHERE hash = ?", (str(h),))
+        matches = c.fetchall()
+        for m in matches:
+            results.append(m[0])
+    conn.close()
+    return results
 
-    try:
-        duration, test_segments = compute_segment_fingerprints(video_path)
-        results = []
-        for ref_id, ref_data in videos.items():
-            ref_segments = ref_data["segments"]
-            matches = []
-            for seg in test_segments:
-                for ref_seg in ref_segments:
-                    if seg["audio_fp"] == ref_seg["audio_fp"]:
-                        matches.append({"type": "audio", "upload_seg": seg, "ref_seg": ref_seg})
-                    elif seg["visual_fp"] and ref_seg["visual_fp"] and seg["visual_fp"] == ref_seg["visual_fp"]:
-                        matches.append({"type": "visual", "upload_seg": seg, "ref_seg": ref_seg})
+def query_visual_hashes(query_hashes):
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    results = []
+    for h, f in query_hashes:
+        c.execute("SELECT video_id FROM visual_hashes WHERE hash = ?", (str(h),))
+        matches = c.fetchall()
+        for m in matches:
+            results.append(m[0])
+    conn.close()
+    return results
 
-            if matches:
-                results.append({
-                    "video_id": ref_id,
-                    "filename": ref_data["filename"],
-                    "matches_found": len(matches),
-                    "examples": matches[:5]  # return only sample evidence
-                })
-        return {"duration": duration, "segments_checked": len(test_segments), "matches": results}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error checking video: {e}")
-    finally:
-        if os.path.exists(video_path):
-            os.unlink(video_path)
+# ================= FASTAPI ENDPOINTS =================
+@app.post("/ingest")
+async def ingest_video(file: UploadFile = File(...), title: str = Form("Untitled")):
+    """Ingest a new video and store audio-visual fingerprints."""
+    temp_path = os.path.join(UPLOAD_DIR, file.filename)
+    with open(temp_path, "wb") as f:
+        f.write(await file.read())
 
-@app.get("/videos")
-async def get_videos():
-    return [{"video_id": vid, "filename": v["filename"], "duration": v["duration"]} for vid, v in videos.items()]
+    audio_hashes, duration = audio_fingerprint(temp_path)
+    visual_hashes = video_fingerprint(temp_path)
+    vid = insert_video(temp_path, title, duration)
 
-# Run: uvicorn fingerprint_server_mem:app --reload --port 8000
+    for h, t in audio_hashes:
+        insert_audio_hash(vid, h, t)
+    for h, f in visual_hashes:
+        insert_visual_hash(vid, h, f)
+
+    return {"status": "success", "video_id": vid, "duration": duration,
+            "audio_hashes": len(audio_hashes), "visual_hashes": len(visual_hashes)}
+
+@app.post("/query")
+async def query_video(file: UploadFile = File(...)):
+    """Query uploaded video for pirated content."""
+    temp_path = os.path.join(tempfile.gettempdir(), file.filename)
+    with open(temp_path, "wb") as f:
+        f.write(await file.read())
+
+    q_audio, _ = audio_fingerprint(temp_path)
+    q_visual = video_fingerprint(temp_path)
+
+    audio_matches = query_audio_hashes(q_audio) if q_audio else []
+    visual_matches = query_visual_hashes(q_visual) if q_visual else []
+
+    if not audio_matches and not visual_matches:
+        return {"match_found": False, "message": "No match found."}
+
+    # Count frequency of video IDs
+    video_scores = {}
+    for vid in audio_matches + visual_matches:
+        video_scores[vid] = video_scores.get(vid, 0) + 1
+
+    # Best match
+    best_match = max(video_scores, key=video_scores.get)
+    total_hashes = max(len(q_audio) + len(q_visual), 1)
+    similarity_ratio = video_scores[best_match] / total_hashes
+
+    if similarity_ratio < SIMILARITY_THRESHOLD:
+        return {"match_found": False, "message": "No significant match found."}
+
+    # Fetch video info
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    c.execute("SELECT title, file_path FROM videos WHERE id = ?", (best_match,))
+    video_info = c.fetchone()
+    conn.close()
+
+    return {
+        "match_found": True,
+        "matched_video_id": best_match,
+        "title": video_info[0],
+        "file_path": video_info[1],
+        "similarity_ratio": similarity_ratio,
+        "audio_matches": len(audio_matches),
+        "visual_matches": len(visual_matches)
+    }
+
+@app.get("/")
+def root():
+    return {"message": "Anti-Piracy Fingerprinting API Running!"}
