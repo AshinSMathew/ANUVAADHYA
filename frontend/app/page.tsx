@@ -1,13 +1,16 @@
-"use client"
-import React from 'react';
+"use client"; // must be at the top
+import React from "react";
+import { useRouter } from "next/navigation"; // correct import for App Router
 
 export default function AnimatedLoginPage() {
+  const router = useRouter(); // now works properly
+
   const handleLogin = () => {
-    console.log('Login clicked');
+    router.push("/login"); // replace with your login route
   };
 
   const handleSignup = () => {
-    console.log('Signup clicked');
+    router.push("/signup"); // replace with your signup route
   };
 
   return (
@@ -22,7 +25,7 @@ export default function AnimatedLoginPage() {
       </div>
 
       {/* Buttons Container */}
-       <div className="flex gap-6">
+      <div className="flex gap-6">
         <button
           onClick={handleLogin}
           className="px-8 py-3 bg-black text-white font-semibold rounded-lg border-2 border-red-500 shadow-lg hover:shadow-red-500/70 hover:scale-105 transition-all duration-300 transform"
@@ -36,17 +39,6 @@ export default function AnimatedLoginPage() {
           Signup
         </button>
       </div>
-
-      <style jsx>{`
-        @keyframes float {
-          0%, 100% {
-            transform: translateY(0px) rotate(0deg);
-          }
-          50% {
-            transform: translateY(-20px) rotate(5deg);
-          }
-        }
-      `}</style>
     </div>
   );
 }
