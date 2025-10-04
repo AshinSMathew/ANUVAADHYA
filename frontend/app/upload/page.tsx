@@ -1,11 +1,13 @@
 "use client"
 
 import { useState } from "react"
+import { useRouter } from "next/navigation"
 import { CinemaDome } from "@/components/cinema-dome"
 
 type AppState = "gallery" | "processing" | "complete"
 
 export default function Home() {
+  const router = useRouter()
   const [appState, setAppState] = useState<AppState>("gallery")
   const [uploadedFile, setUploadedFile] = useState<File | null>(null)
   const [subtitleData, setSubtitleData] = useState<string | null>(null)
@@ -18,24 +20,73 @@ export default function Home() {
       const formData = new FormData()
       formData.append("file", file)
       formData.append("target_language", targetLanguage)
-      console.log("target: ",targetLanguage)
+      console.log("target: ", targetLanguage)
+
+      // Add timeout to the request
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), 300000) // 5 minutes timeout
 
       const response = await fetch("http://localhost:8000/generate-subtitles", {
         method: "POST",
         body: formData,
+        signal: controller.signal,
       })
+
+      clearTimeout(timeoutId)
 
       if (!response.ok) {
         const errorText = await response.text()
-        throw new Error(`HTTP error! status: ${response.status}, details: ${errorText}`)
+        let errorMessage = `HTTP error! status: ${response.status}`
+        
+        try {
+          const errorJson = JSON.parse(errorText)
+          errorMessage = errorJson.detail || errorMessage
+        } catch {
+          errorMessage += `, details: ${errorText}`
+        }
+        
+        throw new Error(errorMessage)
       }
 
       const subtitleText = await response.text()
+      
+      // Validate that we received actual subtitle content
+      if (!subtitleText || subtitleText.trim().length === 0) {
+        throw new Error("No subtitle content received from server")
+      }
+
       setSubtitleData(subtitleText)
       setAppState("complete")
+
+      // Store data for video player page
+      if (typeof window !== 'undefined') {
+        const videoURL = URL.createObjectURL(file)
+        const playerData = {
+          videoURL,
+          videoName: file.name,
+          subtitleData: subtitleText,
+          targetLanguage
+        }
+        sessionStorage.setItem('playerData', JSON.stringify(playerData))
+      }
+
+      // Redirect to video player after a short delay
+      setTimeout(() => {
+        router.push('/player')
+      }, 1500)
     } catch (error) {
       console.error("Error generating subtitles:", error)
-      alert(`Error generating subtitles: ${error instanceof Error ? error.message : 'Unknown error'}`)
+      
+      let errorMessage = 'Unknown error occurred'
+      if (error instanceof Error) {
+        if (error.name === 'AbortError') {
+          errorMessage = 'Request timed out. Please try with a shorter video or check your connection.'
+        } else {
+          errorMessage = error.message
+        }
+      }
+      
+      alert(`Error generating subtitles: ${errorMessage}`)
       setAppState("gallery")
     }
   }

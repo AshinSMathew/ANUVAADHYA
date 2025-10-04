@@ -85,22 +85,12 @@ export default function SignupPage() {
 
   const containerVariants = {
     hidden: { opacity: 0 },
-    visible: {
-      opacity: 1,
-      transition: {
-        duration: 0.8,
-        staggerChildren: 0.1
-      }
-    }
+    visible: { opacity: 1 }
   };
 
   const itemVariants = {
     hidden: { opacity: 0, y: 30 },
-    visible: {
-      opacity: 1,
-      y: 0,
-      transition: { duration: 0.6, ease: "easeOut" }
-    }
+    visible: { opacity: 1, y: 0 }
   };
 
   return (
@@ -132,7 +122,7 @@ export default function SignupPage() {
               duration: 3,
               delay: particle.delay,
               repeat: Infinity,
-              ease: "easeInOut"
+              ease: [0.42, 0, 0.58, 1]
             }}
           />
         ))}
