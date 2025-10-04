@@ -1,82 +1,44 @@
-"use client"
+"use client"; // must be at the top
+import React from "react";
+import { useRouter } from "next/navigation"; // correct import for App Router
 
-import { useState } from "react"
-import { LandingScreen } from "@/components/landing-screen"
-import { CinemaDome } from "@/components/cinema-dome"
+export default function AnimatedLoginPage() {
+  const router = useRouter(); // now works properly
 
-type AppState = "landing" | "gallery" | "processing" | "complete"
+  const handleLogin = () => {
+    router.push("/login"); // replace with your login route
+  };
 
-export default function Home() {
-  const [appState, setAppState] = useState<AppState>("landing")
-  const [uploadedFile, setUploadedFile] = useState<File | null>(null)
-  const [subtitleData, setSubtitleData] = useState<string | null>(null)
-
-  const handleLandingComplete = () => {
-    setAppState("gallery")
-  }
-
-  const handleFileUpload = async (file: File, targetLanguage: string) => {
-    setUploadedFile(file)
-    setAppState("processing")
-
-    try {
-      const formData = new FormData()
-      formData.append("file", file)
-      formData.append("target_language", targetLanguage)
-      console.log("target: ",targetLanguage)
-
-      const response = await fetch("http://localhost:8000/generate-subtitles", {
-        method: "POST",
-        body: formData,
-      })
-
-      if (!response.ok) {
-        const errorText = await response.text()
-        throw new Error(`HTTP error! status: ${response.status}, details: ${errorText}`)
-      }
-
-      const subtitleText = await response.text()
-      setSubtitleData(subtitleText)
-      setAppState("complete")
-    } catch (error) {
-      console.error("Error generating subtitles:", error)
-      alert(`Error generating subtitles: ${error instanceof Error ? error.message : 'Unknown error'}`)
-      setAppState("gallery")
-    }
-  }
-
-  const handleDownload = () => {
-    if (subtitleData) {
-      const blob = new Blob([subtitleData], { type: "application/x-subrip" })
-      const url = URL.createObjectURL(blob)
-      const link = document.createElement("a")
-      link.href = url
-      link.download = `${uploadedFile?.name.split('.')[0] || "subtitles"}.srt`
-      document.body.appendChild(link)
-      link.click()
-      document.body.removeChild(link)
-      URL.revokeObjectURL(url)
-    }
-
-    // Reset to gallery
-    setTimeout(() => {
-      setAppState("gallery")
-      setUploadedFile(null)
-      setSubtitleData(null)
-    }, 1000)
-  }
+  const handleSignup = () => {
+    router.push("/signup"); // replace with your signup route
+  };
 
   return (
-    <main className="min-h-screen relative overflow-hidden">
-      {appState === "landing" && <LandingScreen onComplete={handleLandingComplete} />}
-      {(appState === "gallery" || appState === "processing" || appState === "complete") && (
-        <CinemaDome
-          onFileUpload={handleFileUpload}
-          onDownload={handleDownload}
-          isProcessing={appState === "processing"}
-          isComplete={appState === "complete"}
+    <div className="min-h-screen bg-black flex flex-col items-center justify-center p-8">
+      {/* Image Container with hover zoom effect */}
+      <div className="mb-12">
+        <img
+          src="logo.png"
+          alt="Abstract geometric design"
+          className="max-w-8xl w-full h-auto shadow-5xl transition-transform duration-500 transform hover:scale-105"
         />
-      )}
-    </main>
-  )
+      </div>
+
+      {/* Buttons Container */}
+      <div className="flex gap-6">
+        <button
+          onClick={handleLogin}
+          className="px-8 py-3 bg-black text-white font-semibold rounded-lg border-2 border-red-500 shadow-lg hover:shadow-red-500/70 hover:scale-105 transition-all duration-300 transform"
+        >
+          Login
+        </button>
+        <button
+          onClick={handleSignup}
+          className="px-8 py-3 bg-black text-white font-semibold rounded-lg border-2 border-red-500 shadow-lg hover:shadow-red-500/70 hover:scale-105 transition-all duration-300 transform"
+        >
+          Signup
+        </button>
+      </div>
+    </div>
+  );
 }
