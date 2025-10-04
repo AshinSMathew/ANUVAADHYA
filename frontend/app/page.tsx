@@ -1,9 +1,18 @@
 "use client"; // must be at the top
-import React from "react";
+import React, { useEffect } from "react";
 import { useRouter } from "next/navigation"; // correct import for App Router
+import { useAuth } from "@/contexts/AuthContext";
 
 export default function AnimatedLoginPage() {
   const router = useRouter(); // now works properly
+  const { currentUser } = useAuth();
+
+  // Redirect to dashboard if already logged in
+  useEffect(() => {
+    if (currentUser) {
+      router.push("/dashboard");
+    }
+  }, [currentUser, router]);
 
   const handleLogin = () => {
     router.push("/login"); // replace with your login route
