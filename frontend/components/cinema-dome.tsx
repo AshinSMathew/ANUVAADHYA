@@ -16,22 +16,12 @@ interface CinemaDomeProps {
 }
 
 const cinemaPosters = [
-  "/movie-posters/bollywood-action.jpg",
-  "/movie-posters/hollywood-thriller.jpg",
-  "/movie-posters/bollywood-romance.jpg",
-  "/movie-posters/hollywood-action.jpg",
-  "/movie-posters/bollywood-drama.jpg",
-  "/movie-posters/hollywood-scifi.jpg",
-  "/movie-posters/bollywood-comedy.jpg",
-  "/movie-posters/hollywood-horror.jpg",
-  "/movie-posters/bollywood-musical.jpg",
-  "/movie-posters/hollywood-drama.jpg",
-  "/movie-posters/bollywood-action.jpg",
-  "/movie-posters/hollywood-thriller.jpg",
-  "/movie-posters/bollywood-romance.jpg",
-  "/movie-posters/hollywood-action.jpg",
-  "/movie-posters/bollywood-drama.jpg",
-  "/movie-posters/hollywood-scifi.jpg",
+  "/1.jpeg",
+  "/2.jpeg",
+  "/3.jpeg",
+  "/4.jpeg",
+  "/5.jpeg",
+
 ]
 
 const languages = [
