@@ -15,22 +15,15 @@ export default function Home() {
     setAppState("gallery")
   }
 
-  const handleFileUpload = async (file: File, translateTo: string, targetLanguage: string) => {
+  const handleFileUpload = async (file: File, targetLanguage: string) => {
     setUploadedFile(file)
     setAppState("processing")
 
     try {
       const formData = new FormData()
       formData.append("file", file)
-      formData.append("translate_to", translateTo)
-      
-      // Only append target_language if translation is requested
-      if (translateTo === "target") {
-        formData.append("target_language", targetLanguage)
-      } else if (translateTo === "en") {
-        // For English translation, we still need to send target_language
-        formData.append("target_language", "en")
-      }
+      formData.append("target_language", targetLanguage)
+      console.log("target: ",targetLanguage)
 
       const response = await fetch("http://localhost:8000/generate-subtitles", {
         method: "POST",

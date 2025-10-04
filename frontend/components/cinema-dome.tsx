@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button"
 import SophisticatedDomeGallery from "./sophisticated-dome-gallery"
 
 interface CinemaDomeProps {
-  onFileUpload: (file: File, translateTo: string, targetLanguage: string) => void
+  onFileUpload: (file: File, targetLanguage: string) => void
   onDownload?: () => void
   isProcessing?: boolean
   isComplete?: boolean
@@ -35,7 +35,6 @@ const cinemaPosters = [
 ]
 
 const languages = [
-  { code: "none", name: "No Translation (Original Language)" },
   { code: "en", name: "English" },
   // Indian Languages
   { code: "hi", name: "Hindi" },
@@ -102,13 +101,12 @@ const languages = [
   { code: "ca", name: "Catalan" },
   { code: "eu", name: "Basque" },
   { code: "gl", name: "Galician" },
-  { code: "wa", name: "Welsh" },
+  { code: "cy", name: "Welsh" },
   { code: "gd", name: "Scottish Gaelic" },
 ]
 
 export function CinemaDome({ onFileUpload, onDownload, isProcessing, isComplete }: CinemaDomeProps) {
   const [isDragOver, setIsDragOver] = useState(false)
-  const [translateTo, setTranslateTo] = useState("none")
   const [targetLanguage, setTargetLanguage] = useState("en")
   const fileInputRef = useRef<HTMLInputElement>(null)
 
@@ -117,14 +115,16 @@ export function CinemaDome({ onFileUpload, onDownload, isProcessing, isComplete 
     setIsDragOver(false)
     const files = Array.from(e.dataTransfer.files)
     if (files.length > 0 && (files[0].type.startsWith("video/") || files[0].type.startsWith("audio/"))) {
-      onFileUpload(files[0], translateTo, targetLanguage)
+      console.log("Uploading with language:", targetLanguage)
+      onFileUpload(files[0], targetLanguage)
     }
   }
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || [])
     if (files.length > 0) {
-      onFileUpload(files[0], translateTo, targetLanguage)
+      console.log("Uploading with language:", targetLanguage)
+      onFileUpload(files[0], targetLanguage)
     }
   }
 
@@ -173,45 +173,27 @@ export function CinemaDome({ onFileUpload, onDownload, isProcessing, isComplete 
                   <div className="bg-black/40 border border-white/10 rounded-2xl p-4 space-y-4">
                     <div className="flex items-center gap-2">
                       <Languages className="w-4 h-4 text-red-400" />
-                      <h3 className="text-white text-sm font-medium">Translation Settings</h3>
+                      <h3 className="text-white text-sm font-medium">Translate Subtitles To</h3>
                     </div>
                     
-                    <div className="space-y-3">
-                      <div>
-                        <label className="block text-white/70 text-xs text-left mb-1 font-medium">
-                          Translation Option
-                        </label>
-                        <select
-                          value={translateTo}
-                          onChange={(e) => setTranslateTo(e.target.value)}
-                          className="w-full p-2 bg-black/50 border border-white/20 rounded-lg text-white text-sm focus:ring-2 focus:ring-red-400 focus:border-red-400 transition-colors"
-                        >
-                          <option value="none">No Translation</option>
-                          <option value="en">Translate to English</option>
-                          <option value="target">Translate to Specific Language</option>
-                        </select>
-                      </div>
-
-                      {translateTo === "target" && (
-                        <div>
-                          <label className="block text-white/70 text-xs text-left mb-1 font-medium">
-                            Target Language
-                          </label>
-                          <select
-                            value={targetLanguage}
-                            onChange={(e) => setTargetLanguage(e.target.value)}
-                            className="w-full p-2 bg-black/50 border border-white/20 rounded-lg text-white text-sm focus:ring-2 focus:ring-red-400 focus:border-red-400 transition-colors"
-                          >
-                            {languages
-                              .filter(lang => lang.code !== "none")
-                              .map((language) => (
-                                <option key={language.code} value={language.code}>
-                                  {language.name}
-                                </option>
-                              ))}
-                          </select>
-                        </div>
-                      )}
+                    <div>
+                      <label className="block text-white/70 text-xs text-left mb-1 font-medium">
+                        Select Target Language
+                      </label>
+                      <select
+                        value={targetLanguage}
+                        onChange={(e) => {
+                          console.log("Language changed to:", e.target.value)
+                          setTargetLanguage(e.target.value)
+                        }}
+                        className="w-full p-2 bg-black/50 border border-white/20 rounded-lg text-white text-sm focus:ring-2 focus:ring-red-400 focus:border-red-400 transition-colors"
+                      >
+                        {languages.map((language) => (
+                          <option key={language.code} value={language.code}>
+                            {language.name}
+                          </option>
+                        ))}
+                      </select>
                     </div>
                   </div>
 
@@ -271,12 +253,7 @@ export function CinemaDome({ onFileUpload, onDownload, isProcessing, isComplete 
                   </div>
                   <p className="text-white/80 text-lg">Generating subtitles...</p>
                   <p className="text-white/50 text-sm">
-                    {translateTo === "none" 
-                      ? "Detecting language and generating subtitles..." 
-                      : translateTo === "en" 
-                        ? "Translating to English..." 
-                        : `Translating to ${languages.find(lang => lang.code === targetLanguage)?.name}...`
-                    }
+                    Detecting language and translating to {languages.find(lang => lang.code === targetLanguage)?.name || "selected language"}...
                   </p>
                 </motion.div>
               )}

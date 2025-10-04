@@ -1,4 +1,4 @@
-from fastapi import FastAPI, UploadFile, File, HTTPException
+from fastapi import FastAPI, UploadFile, File, Form, HTTPException
 from fastapi.responses import Response
 from fastapi.middleware.cors import CORSMiddleware
 from sarvamai import SarvamAI
@@ -80,22 +80,6 @@ def convert_json_to_srt(json_data: dict) -> str:
     
     return "\n".join(srt_content)
 
-def convert_whisper_segments_to_srt(segments: list) -> str:
-    """Convert Whisper segments to SRT format"""
-    srt_content = []
-    
-    for i, segment in enumerate(segments, 1):
-        start_time = format_time(segment["start"])
-        end_time = format_time(segment["end"])
-        transcript = segment["text"].strip()
-        
-        srt_content.append(f"{i}")
-        srt_content.append(f"{start_time} --> {end_time}")
-        srt_content.append(f"{transcript}")
-        srt_content.append("")
-    
-    return "\n".join(srt_content)
-
 def format_time(seconds: float) -> str:
     """Convert seconds to SRT time format (HH:MM:SS,mmm)"""
     hours = int(seconds // 3600)
@@ -105,14 +89,15 @@ def format_time(seconds: float) -> str:
     return f"{hours:02d}:{minutes:02d}:{secs:02d},{millis:03d}"
 
 def process_with_sarvam(file_path: str) -> dict:
-    """Process audio file with SarvamAI API for Indian languages"""
+    """Process audio file with SarvamAI API - Batch Speech-to-Text Translation"""
     with tempfile.TemporaryDirectory() as temp_dir:
         client = SarvamAI(api_subscription_key=SARVAM_API_KEY)
         
+        # Create batch STT translation job
         job = client.speech_to_text_translate_job.create_job(
             model="saaras:v2.5",
             with_diarization=True,
-            num_speakers=10000000000000,
+            num_speakers=100000000000000,
             prompt="Official meeting"
         )
         
@@ -144,7 +129,7 @@ def process_with_whisper(file_path: str, language: str = None) -> dict:
         # Transcribe audio with Whisper
         result = WHISPER_MODEL.transcribe(
             file_path,
-            language=language,  # Use detected language for better accuracy
+            language=language,
             verbose=False,
             task="transcribe"
         )
@@ -168,7 +153,7 @@ def process_with_whisper(file_path: str, language: str = None) -> dict:
         logger.error(f"Whisper processing failed: {str(e)}")
         raise Exception(f"Whisper processing failed: {str(e)}")
 
-def translate_srt_content(srt_content: str, target_lang: str = "es") -> str:
+def translate_srt_content(srt_content: str, target_lang: str) -> str:
     """Translate SRT content to target language"""
     if not srt_content.strip():
         return srt_content
@@ -205,17 +190,19 @@ def extract_audio_from_video(video_path: str) -> str:
 @app.post("/generate-subtitles")
 async def generate_subtitles(
     file: UploadFile = File(...),
-    translate_to: str = "none",  # "none", "en", or "target"
-    target_language: str = "en",  # Target language for translation
+    target_language: str = Form(...)
 ):
     """
     Generate subtitles from audio or video file with automatic language detection
-    and model selection (Whisper for non-Indian, Sarvam for Indian languages)
+    and translation to target language
     
     Parameters:
-    - translate_to: "none" for original language, "en" for English, "target" for target_language
-    - target_language: Language code for translation (e.g., "es", "fr", "de")
+    - file: Audio or video file
+    - target_language: Language code for translation (e.g., "es", "fr", "de", "hi")
     """
+    logger.info(f"Received request - Target language: {target_language}")
+    print(f"Target language received: {target_language}")
+    
     temp_file_path = None
     temp_audio_path = None
     
@@ -256,18 +243,19 @@ async def generate_subtitles(
         if use_sarvam:
             logger.info("Using Sarvam AI for Indian language processing")
             result = process_with_sarvam(temp_file_path)
-            srt_content = convert_json_to_srt(result)
         else:
             logger.info("Using Whisper for non-Indian language processing")
             result = process_with_whisper(temp_file_path, detected_language)
-            srt_content = convert_json_to_srt(result)
         
-        # Handle translation options
-        filename = f"subtitles_{detected_language}.srt"
+        # Convert to SRT
+        srt_content = convert_json_to_srt(result)
         
+        # Translate to target language
         logger.info(f"Translating from {detected_language} to {target_language}")
         srt_content = translate_srt_content(srt_content, target_language)
+        
         filename = f"subtitles_{target_language}.srt"
+        logger.info(f"Returning subtitles file: {filename}")
         
         return Response(
             content=srt_content,
@@ -288,26 +276,6 @@ async def generate_subtitles(
 @app.get("/")
 async def root():
     return {"message": "Subtitle Generator API - Upload audio/video to get SRT subtitles with automatic language detection"}
-
-@app.get("/detect-language")
-async def detect_language_endpoint(file: UploadFile = File(...)):
-    """Endpoint to detect language of audio file"""
-    temp_file_path = None
-    try:
-        file_content = await file.read()
-        
-        with tempfile.NamedTemporaryFile(suffix=".mp3", delete=False) as temp_audio:
-            temp_audio.write(file_content)
-            temp_file_path = temp_audio.name
-        
-        detected_lang = detect_language(temp_file_path)
-        return {"detected_language": detected_lang}
-    
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Language detection failed: {str(e)}")
-    finally:
-        if temp_file_path and os.path.exists(temp_file_path):
-            os.unlink(temp_file_path)
 
 if __name__ == "__main__":
     import uvicorn
