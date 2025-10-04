@@ -1,19 +1,14 @@
 "use client"
 
 import { useState } from "react"
-import { LandingScreen } from "@/components/landing-screen"
 import { CinemaDome } from "@/components/cinema-dome"
 
-type AppState = "landing" | "gallery" | "processing" | "complete"
+type AppState = "gallery" | "processing" | "complete"
 
 export default function Home() {
-  const [appState, setAppState] = useState<AppState>("landing")
+  const [appState, setAppState] = useState<AppState>("gallery")
   const [uploadedFile, setUploadedFile] = useState<File | null>(null)
   const [subtitleData, setSubtitleData] = useState<string | null>(null)
-
-  const handleLandingComplete = () => {
-    setAppState("gallery")
-  }
 
   const handleFileUpload = async (file: File, targetLanguage: string) => {
     setUploadedFile(file)
@@ -68,15 +63,12 @@ export default function Home() {
 
   return (
     <main className="min-h-screen relative overflow-hidden">
-      {appState === "landing" && <LandingScreen onComplete={handleLandingComplete} />}
-      {(appState === "gallery" || appState === "processing" || appState === "complete") && (
-        <CinemaDome
-          onFileUpload={handleFileUpload}
-          onDownload={handleDownload}
-          isProcessing={appState === "processing"}
-          isComplete={appState === "complete"}
-        />
-      )}
+      <CinemaDome
+        onFileUpload={handleFileUpload}
+        onDownload={handleDownload}
+        isProcessing={appState === "processing"}
+        isComplete={appState === "complete"}
+      />
     </main>
   )
 }

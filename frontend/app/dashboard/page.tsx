@@ -194,7 +194,7 @@ export default function DashboardPage() {
           </motion.div>
 
           {/* Action Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
+          <div className="flex justify-center items-center">
             {/* Create Subtitle Card */}
             <motion.div
               variants={itemVariants}
@@ -210,35 +210,10 @@ export default function DashboardPage() {
               <p className="text-gray-400 mb-4">
                 Upload your video file and generate subtitles automatically.
               </p>
-              <div className="flex items-center text-red-400 text-sm font-medium group-hover:text-red-300 transition-colors">
+              <div className="flex items-center text-red-400 text-sm font-medium group-hover:text-red-300 transition-colors"
+                 onClick={() => router.push('/upload')}
+              >
                 Start Creating
-                <motion.div
-                  className="ml-2"
-                  animate={{ x: [0, 5, 0] }}
-                  transition={{ duration: 1.5, repeat: Infinity }}
-                >
-                  →
-                </motion.div>
-              </div>
-            </motion.div>
-
-            {/* My Projects Card */}
-            <motion.div
-              variants={itemVariants}
-              whileHover={{ scale: 1.02, y: -5 }}
-              className="glassmorphic-red rounded-2xl p-6 backdrop-blur-xl border border-red-500/30 cursor-pointer group"
-            >
-              <div className="flex items-center mb-4">
-                <div className="p-3 bg-red-500/20 rounded-lg mr-4">
-                  <FileText className="w-6 h-6 text-red-400" />
-                </div>
-                <h3 className="text-xl font-semibold text-white">My Projects</h3>
-              </div>
-              <p className="text-gray-400 mb-4">
-                View and manage all your subtitle projects.
-              </p>
-              <div className="flex items-center text-red-400 text-sm font-medium group-hover:text-red-300 transition-colors">
-                View Projects
                 <motion.div
                   className="ml-2"
                   animate={{ x: [0, 5, 0] }}
@@ -279,91 +254,9 @@ export default function DashboardPage() {
                     </motion.div>
                   </div>
                 </motion.div>
-
-                {/* Upload Files Card */}
-                <motion.div
-                  variants={itemVariants}
-                  whileHover={{ scale: 1.02, y: -5 }}
-                  className="glassmorphic-red rounded-2xl p-6 backdrop-blur-xl border border-red-500/30 cursor-pointer group"
-                >
-                  <div className="flex items-center mb-4">
-                    <div className="p-3 bg-red-500/20 rounded-lg mr-4">
-                      <Upload className="w-6 h-6 text-red-400" />
-                    </div>
-                    <h3 className="text-xl font-semibold text-white">Upload Files</h3>
-                  </div>
-                  <p className="text-gray-400 mb-4">
-                    Upload video files for subtitle generation and analysis.
-                  </p>
-                  <div className="flex items-center text-red-400 text-sm font-medium group-hover:text-red-300 transition-colors">
-                    Upload Now
-                    <motion.div
-                      className="ml-2"
-                      animate={{ x: [0, 5, 0] }}
-                      transition={{ duration: 1.5, repeat: Infinity }}
-                    >
-                      →
-                    </motion.div>
-                  </div>
-                </motion.div>
               </>
             )}
-
-            {/* Settings Card */}
-            <motion.div
-              variants={itemVariants}
-              whileHover={{ scale: 1.02, y: -5 }}
-              className="glassmorphic-red rounded-2xl p-6 backdrop-blur-xl border border-red-500/30 cursor-pointer group"
-            >
-              <div className="flex items-center mb-4">
-                <div className="p-3 bg-red-500/20 rounded-lg mr-4">
-                  <Settings className="w-6 h-6 text-red-400" />
-                </div>
-                <h3 className="text-xl font-semibold text-white">Settings</h3>
-              </div>
-              <p className="text-gray-400 mb-4">
-                Manage your account settings and preferences.
-              </p>
-              <div className="flex items-center text-red-400 text-sm font-medium group-hover:text-red-300 transition-colors">
-                Open Settings
-                <motion.div
-                  className="ml-2"
-                  animate={{ x: [0, 5, 0] }}
-                  transition={{ duration: 1.5, repeat: Infinity }}
-                >
-                  →
-                </motion.div>
-              </div>
-            </motion.div>
           </div>
-
-          {/* Recent Activity */}
-          <motion.div variants={itemVariants} className="glassmorphic-red rounded-2xl p-6 backdrop-blur-xl border border-red-500/30">
-            <h3 className="text-xl font-semibold text-white mb-6">Recent Activity</h3>
-            <div className="space-y-4">
-              <div className="flex items-center p-4 bg-black/20 rounded-lg">
-                <CheckCircle className="w-5 h-5 text-green-400 mr-3" />
-                <div>
-                  <p className="text-white font-medium">Account created successfully</p>
-                  <p className="text-gray-400 text-sm">Welcome to अनुवाद्य!</p>
-                </div>
-              </div>
-              {userRole.role === 'production' && (
-                <div className="flex items-center p-4 bg-black/20 rounded-lg">
-                  <AlertTriangle className="w-5 h-5 text-yellow-400 mr-3" />
-                  <div>
-                    <p className="text-white font-medium">Production features enabled</p>
-                    <p className="text-gray-400 text-sm">You can now access forgery detection tools</p>
-                  </div>
-                </div>
-              )}
-            </div>
-          </motion.div>
-
-          {/* Authentication Test */}
-          <motion.div variants={itemVariants}>
-            <AuthTest />
-          </motion.div>
         </motion.div>
       </div>
     </div>
