@@ -9,32 +9,67 @@ type AppState = "landing" | "gallery" | "processing" | "complete"
 export default function Home() {
   const [appState, setAppState] = useState<AppState>("landing")
   const [uploadedFile, setUploadedFile] = useState<File | null>(null)
+  const [subtitleData, setSubtitleData] = useState<string | null>(null)
 
   const handleLandingComplete = () => {
     setAppState("gallery")
   }
 
-  const handleFileUpload = (file: File) => {
+  const handleFileUpload = async (file: File, translateTo: string, targetLanguage: string) => {
     setUploadedFile(file)
     setAppState("processing")
 
-    // Simulate processing completion
-    setTimeout(() => {
+    try {
+      const formData = new FormData()
+      formData.append("file", file)
+      formData.append("translate_to", translateTo)
+      
+      // Only append target_language if translation is requested
+      if (translateTo === "target") {
+        formData.append("target_language", targetLanguage)
+      } else if (translateTo === "en") {
+        // For English translation, we still need to send target_language
+        formData.append("target_language", "en")
+      }
+
+      const response = await fetch("http://localhost:8000/generate-subtitles", {
+        method: "POST",
+        body: formData,
+      })
+
+      if (!response.ok) {
+        const errorText = await response.text()
+        throw new Error(`HTTP error! status: ${response.status}, details: ${errorText}`)
+      }
+
+      const subtitleText = await response.text()
+      setSubtitleData(subtitleText)
       setAppState("complete")
-    }, 3000)
+    } catch (error) {
+      console.error("Error generating subtitles:", error)
+      alert(`Error generating subtitles: ${error instanceof Error ? error.message : 'Unknown error'}`)
+      setAppState("gallery")
+    }
   }
 
   const handleDownload = () => {
-    // Simulate download
-    const link = document.createElement("a")
-    link.href = "/placeholder.srt"
-    link.download = `${uploadedFile?.name || "subtitles"}.srt`
-    link.click()
+    if (subtitleData) {
+      const blob = new Blob([subtitleData], { type: "application/x-subrip" })
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement("a")
+      link.href = url
+      link.download = `${uploadedFile?.name.split('.')[0] || "subtitles"}.srt`
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      URL.revokeObjectURL(url)
+    }
 
     // Reset to gallery
     setTimeout(() => {
       setAppState("gallery")
       setUploadedFile(null)
+      setSubtitleData(null)
     }, 1000)
   }
 

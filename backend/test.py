@@ -170,6 +170,9 @@ def process_with_whisper(file_path: str, language: str = None) -> dict:
 
 def translate_srt_content(srt_content: str, target_lang: str = "es") -> str:
     """Translate SRT content to target language"""
+    if not srt_content.strip():
+        return srt_content
+        
     translator = GoogleTranslator(source="auto", target=target_lang)
     
     lines = srt_content.split('\n')
@@ -203,8 +206,7 @@ def extract_audio_from_video(video_path: str) -> str:
 async def generate_subtitles(
     file: UploadFile = File(...),
     translate_to: str = "none",  # "none", "en", or "target"
-    target_language: str = "es",  # Target language for translation
-    force_model: str = None  # Optional: force specific model ("whisper" or "sarvam")
+    target_language: str = "en",  # Target language for translation
 ):
     """
     Generate subtitles from audio or video file with automatic language detection
@@ -213,7 +215,6 @@ async def generate_subtitles(
     Parameters:
     - translate_to: "none" for original language, "en" for English, "target" for target_language
     - target_language: Language code for translation (e.g., "es", "fr", "de")
-    - force_model: Optional - "whisper" or "sarvam" to force specific model
     """
     temp_file_path = None
     temp_audio_path = None
@@ -249,15 +250,7 @@ async def generate_subtitles(
         logger.info(f"Detected language: {detected_language}")
         
         # Determine which model to use
-        use_sarvam = False
-        if force_model:
-            if force_model.lower() == "sarvam":
-                use_sarvam = True
-            elif force_model.lower() == "whisper":
-                use_sarvam = False
-        else:
-            # Auto-detect: use Sarvam for Indian languages, Whisper for others
-            use_sarvam = detected_language in INDIAN_LANGUAGES
+        use_sarvam = detected_language in INDIAN_LANGUAGES
         
         # Process with appropriate model
         if use_sarvam:
@@ -267,11 +260,12 @@ async def generate_subtitles(
         else:
             logger.info("Using Whisper for non-Indian language processing")
             result = process_with_whisper(temp_file_path, detected_language)
-            srt_content = convert_json_to_srt(result)  # Reuse same function since format is similar
+            srt_content = convert_json_to_srt(result)
         
         # Handle translation options
         filename = f"subtitles_{detected_language}.srt"
         
+        logger.info(f"Translating from {detected_language} to {target_language}")
         srt_content = translate_srt_content(srt_content, target_language)
         filename = f"subtitles_{target_language}.srt"
         
@@ -294,36 +288,6 @@ async def generate_subtitles(
 @app.get("/")
 async def root():
     return {"message": "Subtitle Generator API - Upload audio/video to get SRT subtitles with automatic language detection"}
-
-@app.get("/supported-languages")
-async def supported_languages():
-    """Get list of supported translation languages"""
-    languages = {
-        "en": "English",
-        "es": "Spanish",
-        "fr": "French", 
-        "de": "German",
-        "it": "Italian",
-        "pt": "Portuguese",
-        "ru": "Russian",
-        "ja": "Japanese",
-        "ko": "Korean",
-        "zh": "Chinese",
-        "ar": "Arabic",
-        # Indian languages
-        "hi": "Hindi",
-        "bn": "Bengali",
-        "te": "Telugu",
-        "ta": "Tamil",
-        "mr": "Marathi",
-        "ur": "Urdu",
-        "gu": "Gujarati",
-        "kn": "Kannada",
-        "ml": "Malayalam",
-        "pa": "Punjabi",
-        "or": "Odia",
-    }
-    return languages
 
 @app.get("/detect-language")
 async def detect_language_endpoint(file: UploadFile = File(...)):
