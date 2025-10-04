@@ -210,6 +210,18 @@ export default function DomeGallery({
     }
   }
 
+  // Auto-rotation effect
+  useEffect(() => {
+    let animationId: number
+    const autoRotate = () => {
+      rotationRef.current.y += 0.2 // Slow rotation speed
+      applyTransform(rotationRef.current.x, rotationRef.current.y)
+      animationId = requestAnimationFrame(autoRotate)
+    }
+    animationId = requestAnimationFrame(autoRotate)
+    return () => cancelAnimationFrame(animationId)
+  }, [])
+
   const lockedRadiusRef = useRef<number | null>(null)
 
   useEffect(() => {
