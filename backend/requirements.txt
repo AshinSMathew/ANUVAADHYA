@@ -7,3 +7,5 @@ deep-translator
 sarvamai
 requests
 pydantic
+transfomers
+torch
