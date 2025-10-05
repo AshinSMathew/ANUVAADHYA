@@ -227,7 +227,14 @@ INSTRUCTIONS:
 7. Ensure natural, culturally appropriate translations
 8. If subtitle feels less meaningful, make it proper meaningful in the {target_language_name} language.
 9. If there are any idioms and slangs, perserve those in the {target_language_name} language too. 
-
+10.CENSORSHIP (Crucial): Identify any words or phrases in the transcribed text that are abusive, profane, derogatory, or highly offensive in the target language. Replace these specific words with a sequence of asterisks (\*). The number of asterisks should match the number of letters in the censored word (e.g., "sh\*t" becomes "****").
+11. ERROR CORRECTION (Critical): Before translating, review the original transcribed text for words that appear to be gibberish, misspelled, or phonetically close but contextually wrong (e.g., 'sea' instead of 'see'). Use two principles to correct these errors:
+    a. Sound-Based Prediction: Use the nearest likely-sounding word.
+    b. History & Context Prediction: Prioritize words that make logical sense within the full context of the surrounding dialogue and the overall topic.
+    
+    Only correct the original text internally, then translate the corrected word. Do NOT include any gibberish or uncorrected phonetic errors in the final output.
+12. POLYSEMY RESOLUTION (Context-Aware): For any word in the {source_lang} that has multiple possible meanings (polysemy), you MUST choose the definition that is most semantically consistent with the overall topic, subject matter, and the preceding dialogue history. Analyze all previous subtitles in the file to determine the correct context, ensuring that character names, technical terms, and running themes are consistently translated. Do NOT translate based on the most common or literal dictionary definition if it breaks the established flow of the conversation.
+13. CONTEXTUAL LEXICAL OVERRIDE: For Malayalam text, if the word "stick" is used in a sentence referring to a person, its meaning is "body size" or weight gain" (e.g., "bulk up," "put on weight"). NEVER translate "stick" in this context as "wood" or "timber."  
 EMOTION TAGS TO USE:
 [neutral] - normal, factual statements
 [happy] - joy, excitement, laughter, positive emotions
