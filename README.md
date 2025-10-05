@@ -41,22 +41,14 @@ ANUVAADHYA/
 │   ├── signup/                  # User registration
 │   ├── upload/                  # File upload interface
 │   ├── components/              # Reusable React components
-│   │   ├── SubtitleEditor/      # Subtitle editing interface
-│   │   ├── LanguageSelector/    # Multi-language selection
-│   │   ├── ProgressTracker/     # Generation progress
-│   │   └── ExportOptions/       # Subtitle export formats
 │   ├── contexts/                # React context providers
-│   │   ├── SubtitleContext/     # Subtitle management
-│   │   ├── LanguageContext/     # Language preferences
 │   │   └── AuthContext/         # User authentication
 │   ├── hooks/                   # Custom React hooks
-│   │   ├── useSubtitleGenerator/
-│   │   ├── useLanguageProcessing/
-│   │   └── useMediaPlayer/
+│   │   ├── useSession/
 │   ├── lib/                     # Utility libraries
-│   │   ├── srt-parser/          # SRT file handling
-│   │   ├── language-codes/      # Language support
-│   │   └── api-client/          # API communication
+│   │   ├── auth-utils.ts          
+│   │   ├── fiebase.ts      
+│   │   └── utils.ts          
 │   ├── public/                  # Static assets
 │   ├── globals.css              # Global styles
 │   ├── layout.tsx               # Root layout
