@@ -351,7 +351,7 @@ export default function PlayerPage() {
       URL.revokeObjectURL(videoSrc)
     }
     sessionStorage.removeItem('playerData')
-    router.push('/dashboard')
+    router.push('/upload')
   }
 
   if (!videoSrc) {
@@ -488,7 +488,7 @@ export default function PlayerPage() {
         {/* Subtitle Overlay */}
         {currentSubtitle && (
           <div className="absolute bottom-24 left-0 right-0 flex justify-center px-4 pointer-events-none">
-            <div className="bg-black/90 text-white text-lg sm:text-xl md:text-2xl font-semibold px-4 sm:px-6 md:px-8 py-3 sm:py-4 rounded-lg max-w-4xl text-center shadow-2xl border border-white/20 backdrop-blur-sm">
+            <div className="bg-transparent text-white text-lg sm:text-xl md:text-2xl font-semibold px-4 sm:px-6 md:px-8 py-3 sm:py-4 rounded-lg max-w-4xl text-center shadow-2xl border border-white/20 backdrop-blur-sm">
               {currentSubtitle}
             </div>
           </div>
