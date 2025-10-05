@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { Play, Pause, Volume2, VolumeX, Maximize, Minimize, ArrowLeft, Settings, SkipBack, SkipForward, RotateCcw } from 'lucide-react'
+import { useAuth } from '@/contexts/AuthContext'
 
 // Parse SRT subtitle format
 function parseSRT(srtText: string) {
@@ -27,6 +28,7 @@ function parseSRT(srtText: string) {
 
 export default function PlayerPage() {
   const router = useRouter()
+  const { userRole } = useAuth()
   const [isPlaying, setIsPlaying] = useState(false)
   const [isMuted, setIsMuted] = useState(false)
   const [isFullscreen, setIsFullscreen] = useState(false)
@@ -306,7 +308,171 @@ export default function PlayerPage() {
     URL.revokeObjectURL(url)
   }
 
-  // Download VTT
+  // Generate and view Bias & Representation Report
+  const handleViewReport = () => {
+    // Extract emotions from subtitles
+    const emotionRegex = /\[(.*?)\]/g
+    const emotions: Record<string, number> = {}
+    let totalEmotions = 0
+    
+    // Process each subtitle to extract emotions
+    subtitleData.split('\n').forEach(line => {
+      let match
+      while ((match = emotionRegex.exec(line)) !== null) {
+        const emotion = match[1].toLowerCase().trim()
+        // Skip neutral emotion
+        if (emotion && emotion !== 'neutral') {
+          emotions[emotion] = (emotions[emotion] || 0) + 1
+          totalEmotions++
+        }
+      }
+    })
+    
+    // Calculate percentages and sort by frequency
+    const emotionStats = Object.entries(emotions).map(([emotion, count]) => ({
+      emotion,
+      count,
+      percentage: Math.round((count / totalEmotions) * 100)
+    })).sort((a, b) => b.count - a.count)
+    
+    // Generate HTML report content
+    const htmlContent = `
+      <!DOCTYPE html>
+      <html lang="en">
+      <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Bias & Representation Audit Report</title>
+        <style>
+          body {
+            font-family: 'Arial', sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f9f9f9;
+          }
+          h1, h2 {
+            color: #e53e3e;
+          }
+          h1 {
+            border-bottom: 2px solid #e53e3e;
+            padding-bottom: 10px;
+          }
+          .info {
+            background-color: #f0f0f0;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+          }
+          .chart-container {
+            margin: 30px 0;
+          }
+          .emotion-bar {
+            display: flex;
+            margin-bottom: 10px;
+            align-items: center;
+          }
+          .emotion-name {
+            width: 120px;
+            font-weight: bold;
+          }
+          .emotion-bar-fill {
+            height: 25px;
+            background-color: #e53e3e;
+            border-radius: 3px;
+            margin-right: 10px;
+          }
+          .emotion-percentage {
+            font-weight: bold;
+          }
+          .summary {
+            background-color: #fff;
+            border-left: 4px solid #e53e3e;
+            padding: 15px;
+            margin-top: 30px;
+          }
+          .footer {
+            margin-top: 40px;
+            font-size: 0.9em;
+            color: #666;
+            text-align: center;
+          }
+        </style>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+        <script>
+          window.onload = function() {
+            // Auto-download PDF after page loads
+            setTimeout(function() {
+              const { jsPDF } = window.jspdf;
+              
+              html2canvas(document.body).then(canvas => {
+                const imgData = canvas.toDataURL('image/png');
+                const pdf = new jsPDF('p', 'mm', 'a4');
+                const pdfWidth = pdf.internal.pageSize.getWidth();
+                const pdfHeight = pdf.internal.pageSize.getHeight();
+                const imgWidth = canvas.width;
+                const imgHeight = canvas.height;
+                const ratio = Math.min(pdfWidth / imgWidth, pdfHeight / imgHeight);
+                const imgX = (pdfWidth - imgWidth * ratio) / 2;
+                const imgY = 30;
+                
+                pdf.addImage(imgData, 'PNG', imgX, imgY, imgWidth * ratio, imgHeight * ratio);
+                pdf.save('${videoName.split('.')[0]}_representation_audit.pdf');
+              });
+            }, 500);
+          }
+        </script>
+      </head>
+      <body>
+        <h1>Bias & Representation Audit Report</h1>
+        
+        <div class="info">
+          <p><strong>File:</strong> ${videoName}</p>
+          <p><strong>Date:</strong> ${new Date().toLocaleDateString()}</p>
+          <p><strong>Time:</strong> ${new Date().toLocaleTimeString()}</p>
+        </div>
+        
+        <h2>EMOTIONAL TONE DISTRIBUTION</h2>
+        <div class="chart-container">
+          ${emotionStats.map(stat => `
+            <div class="emotion-bar">
+              <div class="emotion-name">${stat.emotion}</div>
+              <div class="emotion-bar-fill" style="width: ${stat.percentage}%"></div>
+              <div class="emotion-percentage">${stat.percentage}% (${stat.count} occurrences)</div>
+            </div>
+          `).join('')}
+        </div>
+        
+        <div class="summary">
+          <h2>SUMMARY</h2>
+          <p><strong>Dominant emotion:</strong> ${emotionStats[0]?.emotion || 'None'} (${emotionStats[0]?.percentage || 0}%)</p>
+          <p><strong>Secondary emotion:</strong> ${emotionStats[1]?.emotion || 'None'} (${emotionStats[1]?.percentage || 0}%)</p>
+          <p><strong>Emotional diversity:</strong> ${Object.keys(emotions).length} distinct emotions detected</p>
+        </div>
+        
+        <div class="footer">
+          <p>This report provides quantifiable insight for inclusive storytelling and is relevant for global media standards.</p>
+          <p>Generated by Anuvaadhya</p>
+        </div>
+      </body>
+      </html>
+    `
+    
+    // Create a blob and open in new tab
+    const blob = new Blob([htmlContent], { type: 'text/html' })
+    const url = URL.createObjectURL(blob)
+    window.open(url, '_blank')
+    
+    // Clean up the URL object after a delay
+    setTimeout(() => {
+      URL.revokeObjectURL(url)
+    }, 1000)
+  }
+  
+  // Download VTT (keeping for reference)
   const handleDownloadVTT = () => {
     const vttContent = 'WEBVTT\n\n' + subtitles.map((sub, i) => {
       const startH = Math.floor(sub.startTime / 3600).toString().padStart(2, '0')
@@ -439,12 +605,14 @@ export default function PlayerPage() {
             >
               Download SRT
             </button>
-            <button
-              onClick={handleDownloadVTT}
-              className="px-4 py-2 bg-white/10 hover:bg-white/20 text-white rounded transition-colors text-sm font-medium"
-            >
-              Download VTT
-            </button>
+            {userRole?.role === 'production' && (
+              <button
+                onClick={handleViewReport}
+                className="px-4 py-2 bg-white/10 hover:bg-white/20 text-white rounded transition-colors text-sm font-medium"
+              >
+                View Report
+              </button>
+            )}
           </div>
         </div>
       </div>
