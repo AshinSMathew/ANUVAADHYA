@@ -15,24 +15,6 @@ interface CinemaDomeProps {
   isComplete?: boolean
 }
 
-const cinemaPosters = [
-  "/1.jpeg",
-  "/2.jpeg",
-  "/3.jpeg",
-  "/4.jpeg",
-  "/5.jpeg",
-  "/6.jpeg",
-  "/7.jpeg",
-  "/8.jpeg",
-  "/9.jpeg",
-  "/10.jpeg",
-  "/11.jpeg",
-  "/12.jpeg",
-  "/13.jpeg",
-
-
-]
-
 const languages = [
   { code: "en", name: "English" },
   // Indian Languages
@@ -135,7 +117,6 @@ export function CinemaDome({ onFileUpload, onDownload, isProcessing, isComplete 
     <div className="w-screen h-screen bg-black relative overflow-hidden">
       <div className="absolute inset-0 w-full h-full">
         <SophisticatedDomeGallery
-          images={cinemaPosters}
           overlayBlurColor="#000000"
           grayscale={true}
           imageBorderRadius="8px"

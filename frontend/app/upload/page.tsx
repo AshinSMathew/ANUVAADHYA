@@ -3,6 +3,8 @@
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { CinemaDome } from "@/components/cinema-dome"
+import { ArrowLeft } from "lucide-react"
+import { motion } from 'framer-motion';
 
 type AppState = "gallery" | "processing" | "complete"
 
@@ -114,6 +116,15 @@ export default function Home() {
 
   return (
     <main className="min-h-screen relative overflow-hidden">
+      <motion.button
+        initial={{ opacity: 0, x: -20 }}
+        animate={{ opacity: 1, x: 0 }}
+        transition={{ duration: 0.6 }}
+        onClick={() => router.push('/dashboard')}
+        className="absolute top-8 left-8 z-10 p-3 rounded-full bg-black/20 backdrop-blur-sm border border-white/20 hover:bg-white/10 transition-all duration-300 group"
+      >
+        <ArrowLeft className="w-6 h-6 text-white group-hover:text-red-500 transition-colors" />
+      </motion.button>
       <CinemaDome
         onFileUpload={handleFileUpload}
         onDownload={handleDownload}

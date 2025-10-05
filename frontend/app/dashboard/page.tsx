@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSession, useTokenExpiry } from '@/hooks/useSession';
-import AuthTest from '@/components/AuthTest';
+import SophisticatedDomeGallery from "@/components/sophisticated-dome-gallery"
 import { motion } from 'framer-motion';
 import { 
   LogOut, 
@@ -84,41 +84,13 @@ export default function DashboardPage() {
 
   return (
     <div className="min-h-screen bg-black relative overflow-hidden">
-      {/* Animated Background */}
-      <div className="absolute inset-0">
-        {/* Gradient Background */}
-        <div className="absolute inset-0 bg-gradient-to-br from-black via-gray-900 to-black" />
-        
-        {/* Animated Grid Pattern */}
-        <div className="absolute inset-0 opacity-5">
-          <div className="absolute inset-0 bg-[linear-gradient(45deg,transparent_48%,rgba(255,255,255,0.1)_49%,rgba(255,255,255,0.1)_51%,transparent_52%)] bg-[length:20px_20px] animate-pulse" />
-        </div>
-
-        {/* Floating Particles */}
-        {particles.map((particle) => (
-          <motion.div
-            key={particle.id}
-            className="absolute w-1 h-1 bg-red-500 rounded-full"
-            style={{
-              left: `${particle.x}%`,
-              top: `${particle.y}%`,
-            }}
-            animate={{
-              y: [0, -20, 0],
-              opacity: [0.3, 1, 0.3],
-            }}
-            transition={{
-              duration: 3,
-              delay: particle.delay,
-              repeat: Infinity,
-              ease: "easeInOut"
-            }}
-          />
-        ))}
-
-        {/* Red Glow Effect */}
-        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-red-500/5 rounded-full blur-3xl animate-pulse" />
-        <div className="absolute bottom-1/4 right-1/4 w-80 h-80 bg-red-500/3 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }} />
+      <div className="absolute inset-0 w-full h-full">
+        <SophisticatedDomeGallery
+          overlayBlurColor="#000000"
+          grayscale={true}
+          imageBorderRadius="8px"
+          fit={0.8}
+        />
       </div>
 
       {/* Header */}
@@ -165,10 +137,10 @@ export default function DashboardPage() {
         >
           {/* Welcome Section */}
           <motion.div variants={itemVariants} className="mb-12">
-            <h2 className="text-4xl font-bold text-white mb-4">
+            <h2 className="text-4xl font-bold text-red-400 mb-4">
               Welcome back, {userRole.displayName || 'User'}!
             </h2>
-            <p className="text-gray-400 text-lg">
+            <p className="text-grey-400 text-lg">
               {userRole.role === 'production' 
                 ? 'Manage your subtitle projects and detect forgery in uploaded files.'
                 : 'Create and manage your subtitle projects with ease.'
@@ -241,7 +213,7 @@ export default function DashboardPage() {
             )}
           </div>
         </motion.div>
-      </div>
     </div>
+  </div>
   );
 }
