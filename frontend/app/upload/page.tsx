@@ -8,7 +8,7 @@ import { motion } from 'framer-motion';
 
 type AppState = "gallery" | "processing" | "complete"
 
-export default function Home() {
+export default function UploadPage() {
   const router = useRouter()
   const [appState, setAppState] = useState<AppState>("gallery")
   const [uploadedFile, setUploadedFile] = useState<File | null>(null)
