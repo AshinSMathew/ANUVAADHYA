@@ -189,3 +189,8 @@ python test.py
 5. Export Options
 - SRT - Standard subtitle format
 - VTT - Web video text tracks
+
+# Contributors
+- [Ann Maria Jaison](https://github.com/Ann-Maria-Jaison)
+- [Goldi Babu](https://github.com/goldibabu14)
+- [Stebin Jacob Titus](https://github.com/Stebinjac)
