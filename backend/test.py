@@ -225,6 +225,8 @@ INSTRUCTIONS:
 5. Preserve line breaks within subtitles
 6. Keep timestamps exactly as they are (do not modify)
 7. Ensure natural, culturally appropriate translations
+8. If subtitle feels less meaningful, make it proper meaningful in the {target_language_name} language.
+9. If there are any idioms and slangs, perserve those in the {target_language_name} language too. 
 
 EMOTION TAGS TO USE:
 [neutral] - normal, factual statements
