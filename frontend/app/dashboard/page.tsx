@@ -23,7 +23,6 @@ import {
 
 export default function DashboardPage() {
   const { currentUser, userRole, logout, refreshToken } = useAuth();
-  const session = useSession();
   const timeUntilExpiry = useTokenExpiry();
   const router = useRouter();
   const [particles, setParticles] = useState<Array<{ id: number; x: number; y: number; delay: number }>>([]);
@@ -141,22 +140,6 @@ export default function DashboardPage() {
           </div>
           
           <div className="flex items-center space-x-4">
-            {/* Session Status */}
-            {timeUntilExpiry && (
-              <div className="flex items-center space-x-2 px-3 py-1 bg-black/20 border border-white/20 rounded-lg">
-                <Clock className="w-4 h-4 text-gray-400" />
-                <span className="text-gray-400 text-sm">
-                  Session: {Math.floor(timeUntilExpiry / (1000 * 60))}m left
-                </span>
-                <button
-                  onClick={refreshToken}
-                  className="p-1 hover:bg-white/10 rounded transition-colors"
-                  title="Refresh token"
-                >
-                  <RefreshCw className="w-3 h-3 text-gray-400 hover:text-white" />
-                </button>
-              </div>
-            )}
             
             <div className="text-right">
               <p className="text-white font-medium">{userRole.displayName || 'User'}</p>
