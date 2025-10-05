@@ -2,15 +2,15 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
-import { Play, Pause, Volume2, VolumeX, Maximize, Minimize, ArrowLeft, Settings, SkipBack, SkipForward, RotateCcw } from 'lucide-react'
+import { Play, Pause, Volume2, VolumeX, Maximize, Minimize, ArrowLeft, Settings, SkipBack, SkipForward, Sparkles, X, Search } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 
 // Parse SRT subtitle format
 function parseSRT(srtText: string) {
-  const subtitles: Array<{ startTime: number; endTime: number; text: string }> = []
+  const subtitles: Array<{ startTime: number; endTime: number; text: string; index: number }> = []
   const blocks = srtText.trim().split('\n\n')
   
-  blocks.forEach(block => {
+  blocks.forEach((block, index) => {
     const lines = block.split('\n')
     if (lines.length >= 3) {
       const timeMatch = lines[1].match(/(\d{2}):(\d{2}):(\d{2}),(\d{3}) --> (\d{2}):(\d{2}):(\d{2}),(\d{3})/)
@@ -18,12 +18,21 @@ function parseSRT(srtText: string) {
         const startTime = parseInt(timeMatch[1]) * 3600 + parseInt(timeMatch[2]) * 60 + parseInt(timeMatch[3]) + parseInt(timeMatch[4]) / 1000
         const endTime = parseInt(timeMatch[5]) * 3600 + parseInt(timeMatch[6]) * 60 + parseInt(timeMatch[7]) + parseInt(timeMatch[8]) / 1000
         const text = lines.slice(2).join(' ')
-        subtitles.push({ startTime, endTime, text })
+        subtitles.push({ startTime, endTime, text, index: index + 1 })
       }
     }
   })
   
   return subtitles
+}
+
+interface SceneMatch {
+  subtitleIndex: number
+  startTime: number
+  endTime: number
+  text: string
+  confidence: number
+  reason: string
 }
 
 export default function PlayerPage() {
@@ -36,7 +45,7 @@ export default function PlayerPage() {
   const [duration, setDuration] = useState(0)
   const [currentSubtitle, setCurrentSubtitle] = useState('')
   const [showControls, setShowControls] = useState(true)
-  const [subtitles, setSubtitles] = useState<Array<{ startTime: number; endTime: number; text: string }>>([])
+  const [subtitles, setSubtitles] = useState<Array<{ startTime: number; endTime: number; text: string; index: number }>>([])
   const [videoSrc, setVideoSrc] = useState('')
   const [videoName, setVideoName] = useState('')
   const [subtitleData, setSubtitleData] = useState('')
@@ -47,11 +56,28 @@ export default function PlayerPage() {
   const [error, setError] = useState('')
   const [hoverTime, setHoverTime] = useState(0)
   const [showPreview, setShowPreview] = useState(false)
+  const [searchQuery, setSearchQuery] = useState('')
+  const [isSearching, setIsSearching] = useState(false)
+  const [searchResults, setSearchResults] = useState<SceneMatch[]>([])
+  const [showSearchPanel, setShowSearchPanel] = useState(false)
+  const [isMobile, setIsMobile] = useState(false)
   
   const videoRef = useRef<HTMLVideoElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const controlsTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const progressRef = useRef<HTMLDivElement>(null)
+  const searchInputRef = useRef<HTMLInputElement>(null)
+
+  // Check if mobile device
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768)
+    }
+    
+    checkMobile()
+    window.addEventListener('resize', checkMobile)
+    return () => window.removeEventListener('resize', checkMobile)
+  }, [])
 
   // Load video and subtitle data
   useEffect(() => {
@@ -62,7 +88,8 @@ export default function PlayerPage() {
         setVideoSrc(videoURL)
         setVideoName(name)
         setSubtitleData(srtData)
-        setSubtitles(parseSRT(srtData))
+        const parsedSubtitles = parseSRT(srtData)
+        setSubtitles(parsedSubtitles)
         setIsLoading(false)
       } else {
         // No data found, redirect back
@@ -71,43 +98,78 @@ export default function PlayerPage() {
     }
   }, [router])
 
-  // Keyboard shortcuts
+  // Keyboard shortcuts - disable when search panel is open or input is focused
   useEffect(() => {
     const handleKeyPress = (e: KeyboardEvent) => {
+      // If search panel is open and user is typing in search input, don't handle media keys
+      const isSearchInputFocused = document.activeElement === searchInputRef.current
+      
+      if (showSearchPanel && isSearchInputFocused) {
+        // Allow only Escape to close the panel when focused on input
+        if (e.code === 'Escape') {
+          setShowSearchPanel(false)
+        }
+        return // Don't process media keys when typing in search
+      }
+
       if (!videoRef.current) return
       
       switch (e.code) {
         case 'Space':
           e.preventDefault()
-          togglePlay()
+          if (!showSearchPanel) {
+            togglePlay()
+          }
           break
         case 'KeyF':
           e.preventDefault()
-          toggleFullscreen()
+          if (!showSearchPanel) {
+            toggleFullscreen()
+          }
           break
         case 'KeyM':
           e.preventDefault()
-          toggleMute()
+          if (!showSearchPanel) {
+            toggleMute()
+          }
           break
         case 'ArrowLeft':
           e.preventDefault()
-          skipTime(-10)
+          if (!showSearchPanel) {
+            skipTime(-10)
+          }
           break
         case 'ArrowRight':
           e.preventDefault()
-          skipTime(10)
+          if (!showSearchPanel) {
+            skipTime(10)
+          }
           break
         case 'ArrowUp':
           e.preventDefault()
-          adjustVolume(0.1)
+          if (!showSearchPanel) {
+            adjustVolume(0.1)
+          }
           break
         case 'ArrowDown':
           e.preventDefault()
-          adjustVolume(-0.1)
+          if (!showSearchPanel) {
+            adjustVolume(-0.1)
+          }
           break
         case 'Escape':
-          if (isFullscreen) {
+          if (isFullscreen && !showSearchPanel) {
             toggleFullscreen()
+          }
+          if (showSearchPanel) {
+            setShowSearchPanel(false)
+          }
+          break
+        case 'KeyK':
+          if (e.metaKey || e.ctrlKey) {
+            e.preventDefault()
+            setShowSearchPanel(true)
+            setTimeout(() => searchInputRef.current?.focus(), 100)
           }
           break
       }
@@ -115,7 +177,16 @@ export default function PlayerPage() {
 
     document.addEventListener('keydown', handleKeyPress)
     return () => document.removeEventListener('keydown', handleKeyPress)
-  }, [isPlaying, isMuted, isFullscreen])
+  }, [isPlaying, isMuted, isFullscreen, showSearchPanel])
+
+  // Focus search input when panel opens
+  useEffect(() => {
+    if (showSearchPanel && searchInputRef.current) {
+      setTimeout(() => {
+        searchInputRef.current?.focus()
+      }, 100)
+    }
+  }, [showSearchPanel])
 
   // Update current subtitle based on video time
   useEffect(() => {
@@ -308,6 +379,61 @@ export default function PlayerPage() {
     URL.revokeObjectURL(url)
   }
 
+  // AI Scene Search
+  const handleSceneSearch = async () => {
+    if (!searchQuery.trim()) return
+    
+    setIsSearching(true)
+    setSearchResults([])
+
+    try {
+      const response = await fetch('/api/search-scene', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          query: searchQuery,
+          subtitles: subtitles,
+          video_duration: duration,
+          target_language: 'en'
+        }),
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Search failed')
+      }
+
+      const results: SceneMatch[] = await response.json()
+      setSearchResults(results)
+    } catch (error) {
+      console.error('Search error:', error)
+      alert('Failed to search scenes. Please try again.')
+    } finally {
+      setIsSearching(false)
+    }
+  }
+
+  // Jump to scene
+  const jumpToScene = (scene: SceneMatch) => {
+    if (videoRef.current) {
+      videoRef.current.currentTime = scene.startTime
+      if (!isPlaying) {
+        videoRef.current.play()
+        setIsPlaying(true)
+      }
+      setShowSearchPanel(false)
+    }
+  }
+
+  // Close search panel
+  const closeSearchPanel = () => {
+    setShowSearchPanel(false)
+    setSearchQuery('')
+    setSearchResults([])
+  }
+
   // Generate and view Bias & Representation Report
   const handleViewReport = () => {
     // Extract emotions from subtitles
@@ -471,31 +597,6 @@ export default function PlayerPage() {
       URL.revokeObjectURL(url)
     }, 1000)
   }
-  
-  // Download VTT (keeping for reference)
-  const handleDownloadVTT = () => {
-    const vttContent = 'WEBVTT\n\n' + subtitles.map((sub, i) => {
-      const startH = Math.floor(sub.startTime / 3600).toString().padStart(2, '0')
-      const startM = Math.floor((sub.startTime % 3600) / 60).toString().padStart(2, '0')
-      const startS = Math.floor(sub.startTime % 60).toString().padStart(2, '0')
-      const startMs = Math.floor((sub.startTime % 1) * 1000).toString().padStart(3, '0')
-      
-      const endH = Math.floor(sub.endTime / 3600).toString().padStart(2, '0')
-      const endM = Math.floor((sub.endTime % 3600) / 60).toString().padStart(2, '0')
-      const endS = Math.floor(sub.endTime % 60).toString().padStart(2, '0')
-      const endMs = Math.floor((sub.endTime % 1) * 1000).toString().padStart(3, '0')
-      
-      return `${i + 1}\n${startH}:${startM}:${startS}.${startMs} --> ${endH}:${endM}:${endS}.${endMs}\n${sub.text}\n`
-    }).join('\n')
-    
-    const blob = new Blob([vttContent], { type: 'text/vtt' })
-    const url = URL.createObjectURL(blob)
-    const link = document.createElement('a')
-    link.href = url
-    link.download = `${videoName.split('.')[0]}.vtt`
-    link.click()
-    URL.revokeObjectURL(url)
-  }
 
   // Close settings when clicking outside
   useEffect(() => {
@@ -586,8 +687,9 @@ export default function PlayerPage() {
           border: none;
         }
       `}</style>
+      
       {/* Header */}
-      <div className={`absolute top-0 left-0 right-0 z-50 bg-gradient-to-b from-black/80 to-transparent p-4 transition-opacity duration-300 ${
+      <div className={`absolute top-0 left-0 right-0 z-40 bg-gradient-to-b from-black/80 to-transparent p-4 transition-opacity duration-300 ${
         showControls ? 'opacity-100' : 'opacity-0'
       }`}>
         <div className="flex items-center justify-between max-w-7xl mx-auto">
@@ -595,32 +697,128 @@ export default function PlayerPage() {
             onClick={handleBack}
             className="flex items-center gap-2 text-white hover:text-red-500 transition-colors"
           >
-            <ArrowLeft className="w-6 h-6" />
-            <span className="text-xl font-semibold">Back</span>
+            <ArrowLeft className="w-5 h-5 sm:w-6 sm:h-6" />
+            <span className="text-lg sm:text-xl font-semibold">Back</span>
           </button>
-          <div className="flex gap-2">
+          
+          <div className="flex items-center gap-2 sm:gap-4">
+            {/* AI Search Button */}
             <button
-              onClick={handleDownloadSRT}
-              className="px-4 py-2 bg-white/10 hover:bg-white/20 text-white rounded transition-colors text-sm font-medium"
+              onClick={() => setShowSearchPanel(!showSearchPanel)}
+              className="flex items-center gap-2 px-3 py-2 sm:px-4 sm:py-2 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white rounded-lg transition-all duration-300 shadow-lg text-sm sm:text-base"
             >
-              Download SRT
+              <Sparkles className="w-4 h-4" />
+              <span className="hidden sm:inline">AI Scene Search</span>
+              <span className="sm:hidden">Search</span>
+              <kbd className="hidden sm:inline text-xs bg-black/30 px-2 py-1 rounded">⌘K</kbd>
             </button>
-            {userRole?.role === 'production' && (
+
+            <div className="flex gap-1 sm:gap-2">
               <button
-                onClick={handleViewReport}
-                className="px-4 py-2 bg-white/10 hover:bg-white/20 text-white rounded transition-colors text-sm font-medium"
+                onClick={handleDownloadSRT}
+                className="px-2 py-1 sm:px-4 sm:py-2 bg-white/10 hover:bg-white/20 text-white rounded transition-colors text-xs sm:text-sm font-medium"
               >
-                View Report
+                Download SRT
               </button>
-            )}
+              {userRole?.role === 'production' && (
+                <button
+                  onClick={handleViewReport}
+                  className="px-2 py-1 sm:px-4 sm:py-2 bg-white/10 hover:bg-white/20 text-white rounded transition-colors text-xs sm:text-sm font-medium"
+                >
+                  View Report
+                </button>
+              )}
+            </div>
           </div>
         </div>
       </div>
 
+      {/* AI Search Panel - Responsive */}
+      {showSearchPanel && (
+        <div className={`absolute z-50 bg-black/95 backdrop-blur-lg rounded-lg shadow-2xl border border-white/20 ${
+          isMobile 
+            ? 'inset-4 top-20 max-h-[70vh] overflow-hidden flex flex-col' 
+            : 'top-20 right-8 w-96 max-h-[70vh]'
+        }`}>
+          <div className="p-4 border-b border-white/10 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Sparkles className="w-5 h-5 text-purple-400" />
+              <h3 className="text-white font-semibold text-lg">AI Scene Search</h3>
+            </div>
+            <button
+              onClick={closeSearchPanel}
+              className="text-gray-400 hover:text-white transition-colors"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+          
+          <div className="p-4 flex-1 overflow-hidden flex flex-col">
+            <div className="flex gap-2 mb-4">
+              <input
+                ref={searchInputRef}
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                onKeyPress={(e) => e.key === 'Enter' && handleSceneSearch()}
+                placeholder="Find scenes like 'confession in rain'..."
+                className="flex-1 px-3 py-2 bg-white/10 border border-white/20 rounded text-white placeholder-gray-400 focus:outline-none focus:border-purple-500 text-sm sm:text-base"
+              />
+              <button
+                onClick={handleSceneSearch}
+                disabled={isSearching || !searchQuery.trim()}
+                className="px-4 py-2 bg-purple-600 hover:bg-purple-700 disabled:bg-gray-600 text-white rounded transition-colors text-sm sm:text-base whitespace-nowrap"
+              >
+                {isSearching ? '...' : 'Search'}
+              </button>
+            </div>
+
+            {/* Search Results */}
+            <div className="flex-1 overflow-y-auto">
+              {searchResults.length > 0 && (
+                <div className="space-y-2">
+                  {searchResults.map((result, index) => (
+                    <div
+                      key={index}
+                      onClick={() => jumpToScene(result)}
+                      className="p-3 bg-white/5 hover:bg-white/10 rounded cursor-pointer transition-colors"
+                    >
+                      <div className="flex justify-between items-start mb-1 flex-col sm:flex-row gap-1">
+                        <span className="text-purple-400 text-sm font-medium">
+                          {formatTime(result.startTime)} - {formatTime(result.endTime)}
+                        </span>
+                        <span className="text-green-400 text-xs">
+                          {Math.round(result.confidence * 100)}% match
+                        </span>
+                      </div>
+                      <p className="text-white text-sm mb-1 line-clamp-2">{result.text}</p>
+                      <p className="text-gray-400 text-xs line-clamp-2">{result.reason}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {isSearching && (
+                <div className="text-center py-4">
+                  <div className="w-6 h-6 border-2 border-purple-600 border-t-transparent rounded-full animate-spin mx-auto"></div>
+                  <p className="text-gray-400 text-sm mt-2">Searching scenes...</p>
+                </div>
+              )}
+
+              {!isSearching && searchResults.length === 0 && searchQuery && (
+                <div className="text-center py-4 text-gray-400 text-sm">
+                  No scenes found. Try different keywords.
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Video Container */}
       <div 
         ref={containerRef}
-        className="relative w-full h-screen flex items-center justify-center"
+        className="relative w-full h-screen flex items-center justify-center bg-black"
         onMouseMove={handleMouseMove}
         onMouseLeave={() => isPlaying && setShowControls(false)}
         onTouchStart={() => setShowControls(true)}
@@ -649,14 +847,14 @@ export default function PlayerPage() {
         {/* Loading Spinner */}
         {isLoading && (
           <div className="absolute inset-0 flex items-center justify-center bg-black/50">
-            <div className="w-16 h-16 border-4 border-red-600 border-t-transparent rounded-full animate-spin"></div>
+            <div className="w-12 h-12 sm:w-16 sm:h-16 border-4 border-red-600 border-t-transparent rounded-full animate-spin"></div>
           </div>
         )}
 
         {/* Subtitle Overlay */}
         {currentSubtitle && (
           <div className="absolute bottom-24 left-0 right-0 flex justify-center px-4 pointer-events-none">
-            <div className="bg-transparent text-white text-lg sm:text-xl md:text-2xl font-semibold px-4 sm:px-6 md:px-8 py-3 sm:py-4 rounded-lg max-w-4xl text-center shadow-2xl border border-white/20 backdrop-blur-sm">
+            <div className="bg-transparent text-white text-base sm:text-lg md:text-xl font-semibold px-4 sm:px-6 md:px-8 py-2 sm:py-3 rounded-lg max-w-4xl text-center shadow-2xl border border-white/20 backdrop-blur-sm">
               {currentSubtitle}
             </div>
           </div>
