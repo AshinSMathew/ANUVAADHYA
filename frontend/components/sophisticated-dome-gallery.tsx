@@ -199,7 +199,7 @@ export default function DomeGallery({
   useEffect(() => {
     let animationId: number
     const autoRotate = () => {
-      rotationRef.current.y += 0.1 // Slow rotation speed
+      rotationRef.current.y += 0.05 // Slow rotation speed
       applyTransform(rotationRef.current.x, rotationRef.current.y)
       animationId = requestAnimationFrame(autoRotate)
     }
