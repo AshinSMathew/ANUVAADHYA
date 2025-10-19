@@ -26,10 +26,13 @@ export default function AnimatedLoginPage() {
     <div className="min-h-screen bg-black flex flex-col items-center justify-center p-8">
       {/* Image Container with hover zoom effect */}
       <div className="mb-12">
-        <img
-          src="logo.png"
-          alt="Abstract geometric design"
-          className="max-w-8xl w-full h-auto shadow-5xl transition-transform duration-500 transform hover:scale-105"
+        <video
+          src="animation.mp4"
+          autoPlay
+          loop
+          muted
+          playsInline
+          className="max-w-8xl w-230 h-full shadow-5xl transition-transform duration-500 transform hover:scale-105 rounded-2xl"
         />
       </div>
 
