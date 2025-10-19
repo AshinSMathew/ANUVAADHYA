@@ -2,6 +2,7 @@ import type React from "react"
 import { Inter, Montserrat } from "next/font/google"
 import "./globals.css"
 import { AuthProvider } from "@/contexts/AuthContext"
+import SophisticatedDomeGallery from "@/components/sophisticated-dome-gallery"
 
 const inter = Inter({
   subsets: ["latin"],
@@ -31,6 +32,14 @@ export default function RootLayout({
       <body className="font-inter bg-black text-white overflow-x-hidden">
         <AuthProvider>
           {children}
+          <div className="absolute inset-0 w-full h-full">
+            <SophisticatedDomeGallery
+              overlayBlurColor="#000000"
+              grayscale={true}
+              imageBorderRadius="8px"
+              fit={0.8}
+            />
+          </div>
         </AuthProvider>
       </body>
     </html>

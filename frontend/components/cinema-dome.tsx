@@ -115,14 +115,6 @@ export function CinemaDome({ onFileUpload, onDownload, isProcessing, isComplete 
 
   return (
     <div className="w-screen h-screen bg-black relative overflow-hidden">
-      <div className="absolute inset-0 w-full h-full">
-        <SophisticatedDomeGallery
-          overlayBlurColor="#000000"
-          grayscale={true}
-          imageBorderRadius="8px"
-          fit={0.8}
-        />
-      </div>
 
       <div className="absolute inset-0 flex items-center justify-center z-50 pointer-events-none">
         <motion.div

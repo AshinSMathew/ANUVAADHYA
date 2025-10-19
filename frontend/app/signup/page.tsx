@@ -96,15 +96,6 @@ export default function SignupPage() {
 
   return (
     <div className="min-h-screen bg-black relative overflow-hidden">
-      <div className="absolute inset-0 w-screen h-screen">
-        <SophisticatedDomeGallery
-          overlayBlurColor="#000000"
-          grayscale={true}
-          imageBorderRadius="8px"
-          fit={0.8}
-        />
-      </div>
-
       {/* Back Button */}
       <motion.button
         initial={{ opacity: 0, x: -20 }}
